@@ -1,6 +1,16 @@
 import copy, nodes
 from framework import Condition
 
+
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+# These codes are ugly, and will be modified later.
+
+# rule_split
 class split_solver:
 	def __init__(self):
 		self.node_set = set()
@@ -26,6 +36,7 @@ def apply_rule_split(nf):
 	solver = split_solver()
 	solver.split_nodes(nf.in_node)
 
+# rule_out_traffic_classification
 class out_traffic_classification_solver():
 	def __init__(self):
 		pass
@@ -44,6 +55,7 @@ def apply_rule_out_traffic_classification(nfs):
 	solver = out_traffic_classification_solver()
 	solver.add_classifier_for_nfs(nfs)
 
+# rule_out_traffic_elimination
 class out_traffic_elimination_solver():
 	def eliminate(self, node):
 		if hasattr(node, 'child'):
@@ -64,6 +76,7 @@ def apply_rule_out_traffic_elimination(nf):
 	solver = out_traffic_elimination_solver()
 	solver.eliminate(nf.in_node)
 
+# rule_classifier_pull_up
 class out_classifier_pull_up_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -94,6 +107,7 @@ def apply_rule_out_classifier_pull_up(nf):
 	solver = out_classifier_pull_up_solver()
 	solver.pull_up(nf.in_node)
 
+# rule_write_read_elimination
 class write_read_elimination_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -117,6 +131,7 @@ def apply_rule_write_read_elimination(nf):
 	solver = write_read_elimination_solver()
 	solver.eliminate(nf.in_node)
 
+# rule_predicate_push_down
 class predicate_push_down_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -144,6 +159,7 @@ def apply_rule_predicate_push_down(nf):
 	solver = predicate_push_down_solver()
 	solver.push_down(nf.in_node)
 
+# rule_branch_elimination
 class branch_elimination_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -183,6 +199,7 @@ def apply_rule_branch_elimination(nf):
 	solver = branch_elimination_solver()
 	solver.run(nf)
 
+# rule_classifier_elimination
 class classifier_elimination_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -207,6 +224,7 @@ def apply_rule_classifier_elimination(nf):
 	solver = classifier_elimination_solver()
 	solver.eliminate(nf.in_node)
 
+# rule_ttl_push_down
 class ttl_push_down_solver:
 	def __init__(self):
 		self.visit_stack = []
@@ -246,7 +264,8 @@ class ttl_push_down_solver:
 def apply_rule_ttl_push_down(nf):
 	solver = ttl_push_down_solver()
 	solver.push_down(nf.in_node)
-			
+
+# rule_early_drop			
 class early_drop_solver:
 	def __init__(self):
 		self.visit_stack = []

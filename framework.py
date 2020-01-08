@@ -1,23 +1,21 @@
+# Visitor object is used to recursively access a NF
 class Visitor:
-	def __init__(self, type = ''):
-		self.type = type
-
 	def __str__(self):
-		return 'Visitor' + self.type
+		return 'Visitor'
 
-	# enter(node Node) (skip_child bool)
 	def enter(self, node):
 		print(node)
 		return False
 
-	# leave(node Node) (ok bool)
 	def leave(self, node):
 		pass
 
+# Node object means a node in NF
 class Node:
 	def __init__(self, type = ''):
 		self.type = type
 		self.state = {e: 'null' for e in ['ip_src', 'ip_dst', 'protocol', 'port_src', 'port_dst']}
+		# the state updated by rewrite nodes
 		self.extra_state = {}
 
 	def __str__(self):
@@ -26,6 +24,7 @@ class Node:
 		else:
 			return 'Node'
 
+	# copy return an copy of a node
 	def copy(self):
 		import copy
 		res = copy.copy(self)
@@ -33,11 +32,11 @@ class Node:
 		res.extra_state = self.extra_state.copy()
 		return res
 
-	# accept(visitor Visitor)
 	def accept(self, visitor):
 		visitor.enter(self)
 		visitor.leave(self)
 
+# NetworkFunction object means a NF
 class NetworkFunction:
 	def __init__(self):
 		self.successors = []
@@ -56,6 +55,7 @@ class NetworkFunction:
 		if hasattr(visitor, 'show'):
 			visitor.show()
 
+	# connect adds an edge between two NFs
 	def connect(self, out_idx, nf):
 		node1 = self.out_nodes[out_idx]
 		node2 = nf.in_node
@@ -64,11 +64,13 @@ class NetworkFunction:
 		if hasattr(node1, 'add_child'):
 			node1.add_child(node2)
 
+# Condition object means conditions for a branch or expression
 class Condition:
 	def __init__(self, cond = {}):
 		self.type = 'normal'
 		self.cond = cond
 
+	# eliminate_with_state extracts conditions which are not satisfied yet.
 	def eliminate_with_state(self, state):
 		if self.type == 'normal':
 			pops = []
@@ -78,38 +80,28 @@ class Condition:
 			for key in pops:
 				self.cond.pop(key)
 
-	# @staticmethod
-	# def Construct_And(cond1, cond2):
-	# 	and_node = Condition()
-	# 	and_node.type = 'and'
-	# 	and_node.oprands = [cond1, cond2]
-	# 	return and_node
-
-	# @staticmethod
-	# def Construct_Or(cond1, cond2):
-	# 	or_node = Condition()
-	# 	or_node.type = 'or'
-	# 	or_node.oprands = [cond1, cond2]
-	# 	return or_node
-
+	# And constructs an 'And' Condition
 	def And(self, cond):
 		and_node = Condition()
 		and_node.type = 'and'
 		and_node.oprands = [self, cond]
 		return and_node
 
+	# Or constructs a 'Or' Condition
 	def Or(self, cond):
 		or_node = Condition()
 		or_node.type = 'or'
 		or_node.oprands = [self, cond]
 		return or_node
 
+	# update_to_state update a state if this Condition's type if normal
 	def update_to_state(self, state):
 		if self.type == 'normal':
 			state.update(self.cond)
 
+	# match checks if the given state satisfy this Condition
+	# -1 False, 0 Unknown, 1 True
 	def match(self, state):
-		# -1 False, 0 Unknown, 1 True
 		if self.type == 'normal':
 			cond = self.cond
 			if not cond:
@@ -150,27 +142,27 @@ class Condition:
 	def __repr__(self):
 		return self.__str__()
 
-class Graph:
-	def __init__(self):
-		# idx -> node, node -> idx
-		self.nodes = {}
-		self.node_idx = {}
-		# idx -> edge, edge -> idx
-		self.edges = {}
-		self.edge_idx = {}
+# class Graph:
+# 	def __init__(self):
+# 		# idx -> node, node -> idx
+# 		self.nodes = {}
+# 		self.node_idx = {}
+# 		# idx -> edge, edge -> idx
+# 		self.edges = {}
+# 		self.edge_idx = {}
 
-	# return idx, add same node twice will do nothing
-	def add_node(self, node):
-		if node not in self.node_idx:
-			idx = len(self.nodes)
-			self.nodes[idx] = node
-			self.node_idx[node] = idx
-		return self.node_idx[node]
+# 	# return idx, add same node twice will do nothing
+# 	def add_node(self, node):
+# 		if node not in self.node_idx:
+# 			idx = len(self.nodes)
+# 			self.nodes[idx] = node
+# 			self.node_idx[node] = idx
+# 		return self.node_idx[node]
 
-	# return idx, add same edge twice will do nothing
-	def add_edge(self, edge):
-		if edge not in self.edge_idx:
-			idx = len(self.edges)
-			self.edges[idx] = edge
-			self.edge_idx[edge] = idx
-		return self.edge_idx[edge]
+# 	# return idx, add same edge twice will do nothing
+# 	def add_edge(self, edge):
+# 		if edge not in self.edge_idx:
+# 			idx = len(self.edges)
+# 			self.edges[idx] = edge
+# 			self.edge_idx[edge] = idx
+# 		return self.edge_idx[edge]

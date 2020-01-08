@@ -71,10 +71,13 @@ class RewriterNode(Node):
 		pass
 
 #### useful classes
+
+# indicate a drop
 class DropNode(NoChildNode):
 	def __init__(self):
 		super().__init__('Drop')
 
+# indicate an out flow
 class OutTrafficNode(SingleChildNode):
 	def __init__(self):
 		super().__init__('OutTraffic')
@@ -92,6 +95,7 @@ class ReadIpAddressNode(SingleChildNode):
 	def __init__(self):
 		super().__init__('ReadIpAddress')
 
+# not useful yet
 class IpLookUpNode(SingleChildNode, StateRecorderNode):
 	def __init__(self):
 		super().__init__('IpLookUp')
@@ -122,10 +126,12 @@ class RewriteNode(SingleChildNode, RewriterNode):
 		super().__init__('Rewrite')
 		self.content = content
 
+# not useful yet
 class StatefulRewriteNode(SingleChildNode, RewriterNode, StatefulNode):
 	def __init__(self):
 		super().__init__('StatefulRewrite')
 
+# following two classes should be eliminate to a single one later
 class ClassifierNode(MultipleChildNode):
 	def __init__(self):
 		super().__init__('Classifier')

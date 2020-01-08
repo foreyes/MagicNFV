@@ -1,5 +1,6 @@
 from framework import Visitor, Graph
 
+# OneTimeVisitor is a visitor that will access the same node at most once
 class OneTimeVisitor(Visitor):
 	def __init__(self, type = ''):
 		super().__init__(type)
@@ -12,6 +13,7 @@ class OneTimeVisitor(Visitor):
 		print(node)
 		return False
 
+# Painter is a visitor that can draw a picture of the NFs
 class Painter(Visitor):
 	def __init__(self, pic_name = 'pic'):
 		super().__init__('Painter')
