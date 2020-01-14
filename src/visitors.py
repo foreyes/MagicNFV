@@ -1,9 +1,9 @@
-from framework import Visitor, Graph
+from framework import Visitor
 
 # OneTimeVisitor is a visitor that will access the same node at most once
 class OneTimeVisitor(Visitor):
-	def __init__(self, type = ''):
-		super().__init__(type)
+	def __init__(self):
+		super().__init__()
 		self.visit_record = set()
 
 	def enter(self, node):
@@ -16,7 +16,7 @@ class OneTimeVisitor(Visitor):
 # Painter is a visitor that can draw a picture of the NFs
 class Painter(Visitor):
 	def __init__(self, pic_name = 'pic'):
-		super().__init__('Painter')
+		super().__init__()
 		self.pic_name = pic_name
 		self.idx_map = {}
 		self.visit_stack = []

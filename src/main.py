@@ -1,43 +1,6 @@
 from framework import Visitor, Node, NetworkFunction, Condition
 import nodes, visitors, opt_rules
 
-if __name__ == '__main__':
-	# get NFs and define DAG
-	nf1, nf2, nf3 = get_nf1(), get_nf2(), get_nf3()
-	nf1.add_successor(nf2)
-	nf2.add_successor(nf3)
-
-	# draw original picture
-	org = visitors.Painter('original')
-	nf1.in_node.accept(org)
-	nf2.in_node.accept(org)
-	nf3.in_node.accept(org)
-	org.show()
-
-	# applay optimize rules and draw pictures
-	opt_rules.apply_rule_out_traffic_classification([nf1, nf2, nf3])
-	nf1.show(visitors.Painter('s1'))
-	opt_rules.apply_rule_split(nf1)
-	nf1.show(visitors.Painter('s2'))
-	opt_rules.apply_rule_out_traffic_elimination(nf1)
-	nf1.show(visitors.Painter('s3'))
-	opt_rules.apply_rule_out_classifier_pull_up(nf1)
-	nf1.show(visitors.Painter('s4'))
-	opt_rules.apply_rule_write_read_elimination(nf1)
-	nf1.show(visitors.Painter('s5'))
-	opt_rules.apply_rule_predicate_push_down(nf1)
-	nf1.show(visitors.Painter('s6'))
-	opt_rules.apply_rule_branch_elimination(nf1)
-	nf1.show(visitors.Painter('s7'))
-	opt_rules.apply_rule_classifier_elimination(nf1)
-	nf1.show(visitors.Painter('s8'))
-	opt_rules.apply_rule_ttl_push_down(nf1)
-	nf1.show(visitors.Painter('s9'))
-	opt_rules.apply_rule_early_drop(nf1)
-	opt_rules.apply_rule_classifier_elimination(nf1)
-	nf1.show(visitors.Painter('s10'))
-
-
 def get_nf1():
 	rf = nodes.ReadFrameNode('192.168.0.1')
 	seh = nodes.StripEthernetHeaderNode()
@@ -117,3 +80,39 @@ def get_nf3():
 	nf.set_out_nodes([wf.child])
 
 	return nf
+
+if __name__ == '__main__':
+	# get NFs and define DAG
+	nf1, nf2, nf3 = get_nf1(), get_nf2(), get_nf3()
+	nf1.add_successor(nf2)
+	nf2.add_successor(nf3)
+
+	# draw original picture
+	org = visitors.Painter('original')
+	nf1.in_node.accept(org)
+	nf2.in_node.accept(org)
+	nf3.in_node.accept(org)
+	org.show()
+
+	# applay optimize rules and draw pictures
+	opt_rules.apply_rule_out_traffic_classification([nf1, nf2, nf3])
+	nf1.show(visitors.Painter('s1'))
+	opt_rules.apply_rule_split(nf1)
+	nf1.show(visitors.Painter('s2'))
+	opt_rules.apply_rule_out_traffic_elimination(nf1)
+	nf1.show(visitors.Painter('s3'))
+	opt_rules.apply_rule_out_classifier_pull_up(nf1)
+	nf1.show(visitors.Painter('s4'))
+	opt_rules.apply_rule_write_read_elimination(nf1)
+	nf1.show(visitors.Painter('s5'))
+	opt_rules.apply_rule_predicate_push_down(nf1)
+	nf1.show(visitors.Painter('s6'))
+	opt_rules.apply_rule_branch_elimination(nf1)
+	nf1.show(visitors.Painter('s7'))
+	opt_rules.apply_rule_classifier_elimination(nf1)
+	nf1.show(visitors.Painter('s8'))
+	opt_rules.apply_rule_ttl_push_down(nf1)
+	nf1.show(visitors.Painter('s9'))
+	opt_rules.apply_rule_early_drop(nf1)
+	opt_rules.apply_rule_classifier_elimination(nf1)
+	nf1.show(visitors.Painter('s10'))
