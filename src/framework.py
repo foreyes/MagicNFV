@@ -1,168 +1,340 @@
-# Visitor object is used to recursively access a NF
-class Visitor:
-	def __str__(self):
-		return 'Visitor'
+from operator import *
+from copy import deepcopy
 
-	def enter(self, node):
-		print(node)
+class NFNode:
+	def __init__(self):
+		self._attributes = {}
+		self._children = []
+
+	def set_attributes(self, attrs):
+		# 能否在硬件上执行、分支条件、需要读/写哪些字段、一定不会读/写哪些字段
+		self._attributes = attrs
+
+	def get_attributes(self):
+		return self._attributes
+
+	def set_child(self, idx, child):
+		self._children[idx] = child
+
+	# 将一个儿子设为另一个，返回是否成功
+	def set_child_to_another(self, old_child, new_child):
+		for i in range(len(self._children)):
+			if self._children[i] is old_child:
+				self._children[i] = new_child
+				return True
 		return False
 
-	def leave(self, node):
+	def get_child(self, idx):
+		return self._children[idx]
+
+	def set_children(self, children):
+		self._children = children
+
+	def get_children(self):
+		from copy import copy
+		return copy(self._children)
+
+	# 给出包与当前状态，进行相应处理并返回包的出口编号。返回 -1 表示丢弃
+	def solve_packet(self, packet, states):
+		return 0
+
+	def get_read_fields(self):
+		return set()
+
+	def get_write_fields(self):
+		return set()
+
+	def show(self):
 		pass
 
-# Node object means a node in NF
-class Node:
-	def __init__(self, type = ''):
-		self.type = type
-		self.state = {e: 'null' for e in ['ip_src', 'ip_dst', 'protocol', 'port_src', 'port_dst']}
-		# the state updated by rewrite nodes
-		self.extra_state = {}
+# 数组的 id 用来表示 Unknown 的字段
+Unknown = []
+# 数组的 id 用来表示全部字段，例如 "will_read": ("global", AllFields) 表示可能会读全部的全局状态
+AllFields = []
 
-	def __str__(self):
-		if self.type:
-			return self.type
+class Packet:
+	def __init__(self, random_fields = True):
+		self._fields = {}
+		if random_fields:
+			self.get_random_fields
+
+	# TODO: 读写都加上返回是否成功
+	def read_field(self, field_name, ret_unknown = False):
+		if field_name not in self._fields or self._fields[field_name] is Unknown:
+			if ret_unknown:
+				return Unknown
+			else:
+				assert(False)
+		# print("read packet: ", field_name, self.__fields[field_name])
+		return self._fields[field_name]
+
+	def write_field(self, field_name, value):
+		# print("write packet: ", field_name, value)
+		self._fields[field_name] = value
+		if field_name is AllFields:
+			for fn in self._fields:
+				self._fields[fn] = value
 		else:
-			return 'Node'
+			self._fields[field_name] = value
 
-	# copy return an copy of a node
-	def copy(self):
-		import copy
-		res = copy.copy(self)
-		res.state = self.state.copy()
-		res.extra_state = self.extra_state.copy()
-		return res
+	def get_random_fields(self):
+		pass
 
-	def accept(self, visitor):
-		visitor.enter(self)
-		visitor.leave(self)
 
-# NetworkFunction object means a NF
-class NetworkFunction:
+class States:
 	def __init__(self):
-		self.successors = []
+		self._private = {}
+		self._global = {}
+		self._cur_conditions = []
 
-	def set_in_node(self, in_node):
-		self.in_node = in_node
+	def init_packet_states(self):
+		self._private = {}
 
-	def set_out_nodes(self, out_nodes):
-		self.out_nodes = out_nodes
+	def add_condition(self, cond):
+		self._cur_conditions.append(cond)
 
-	def add_successor(self, nf):
-		self.successors.append(nf)
+	def eliminate_cur_conditions_with_packet(self, packet):
+		pass
 
-	def show(self, visitor):
-		self.in_node.accept(visitor)
-		if hasattr(visitor, 'show'):
-			visitor.show()
-
-	# connect adds an edge between two NFs
-	def connect(self, out_idx, nf):
-		node1 = self.out_nodes[out_idx]
-		node2 = nf.in_node
-		if hasattr(node1, 'set_child'):
-			node1.set_child(node2)
-		if hasattr(node1, 'add_child'):
-			node1.add_child(node2)
-
-# Condition object means conditions for a branch or expression
-class Condition:
-	def __init__(self, cond = {}):
-		self.type = 'normal'
-		self.cond = cond
-
-	# eliminate_with_state extracts conditions which are not satisfied yet.
-	def eliminate_with_state(self, state):
-		if self.type == 'normal':
-			pops = []
-			for key in self.cond:
-				if key in state and self.cond[key] == state[key]:
-					pops.append(key)
-			for key in pops:
-				self.cond.pop(key)
-
-	# And constructs an 'And' Condition
-	def And(self, cond):
-		and_node = Condition()
-		and_node.type = 'and'
-		and_node.oprands = [self, cond]
-		return and_node
-
-	# Or constructs a 'Or' Condition
-	def Or(self, cond):
-		or_node = Condition()
-		or_node.type = 'or'
-		or_node.oprands = [self, cond]
-		return or_node
-
-	# update_to_state update a state if this Condition's type if normal
-	def update_to_state(self, state):
-		if self.type == 'normal':
-			state.update(self.cond)
-
-	# match checks if the given state satisfy this Condition
-	# -1 False, 0 Unknown, 1 True
-	def match(self, state):
-		if self.type == 'normal':
-			cond = self.cond
-			if not cond:
-				return 0
-			for key in cond:
-				if key not in state or state[key] == 'null' or state[key] == 'unknown':
-					return 0
-				if state[key] != cond[key]:
-					return -1
-			return 1
-		elif self.type == 'and':
-			final_res = 1
-			for cond in self.oprands:
-				res = cond.match(state)
-				if res == -1:
-					return -1
-				if res == 0:
-					final_res = 0
-			return final_res
+	def write_packet_state(self, state_name, value):
+		# print("write private: ", state_name, value)	
+		if state_name is AllFields:
+			for sn in self._private:
+				self._private[sn] = value
 		else:
-			final_res = -1
-			for cond in self.oprands:
-				res = cond.match(state)
-				if res == 1:
-					return 1
-				if res == 0:
-					final_res = 0
-			return final_res
+			self._private[state_name] = value
+
+	def write_global_state(self, state_name, value):
+		# print("write global: ", state_name, value)
+		if state_name is AllFields:
+			for sn in self._global:
+				self._global[sn] = value
+		else:
+			self._global[state_name] = value
+
+	def read_packet_state(self, state_name, ret_unknown = False):
+		if state_name not in self._private or self._private[state_name] is Unknown:
+			if ret_unknown:
+				return Unknown
+			else:
+				assert(False)
+		# print("read private: ", state_name, self.__private[state_name])
+		return self._private[state_name]
+
+	def read_global_state(self, state_name, ret_unknown = False):
+		if state_name not in self._global or self._global[state_name] is Unknown:
+			if ret_unknown:
+				return Unknown
+			else:
+				assert(False)
+		# print("read global: ", state_name, self.__global[state_name])
+		return self._global[state_name]
+
+	# fields 是 "will_not_write" 的字段，除此之外全部置为 Unknown
+	def set_packet_unknown(fields):
+		if fields is AllFields:
+			for key in self._private:
+				self._private[key] = Unknown
+			return
+		for key in self._private:
+			if key not in fields:
+				self._private[key] = Unknown
+
+	def set_global_unknown(fields):
+		if fields is AllFields:
+			for key in self._global:
+				self._global[key] = Unknown
+			return
+		for key in self._global:
+			if key not in fields:
+				self._global[key] = Unknown
+
+
+def set_unknown(fields, packet, states):
+	all_flag_global, all_flag_private, all_flag_packet = False, False, False
+	global_states, private_states, packet_fields = set(), set(), set()
+	for field in fields:
+		if field[0] == "packet":
+			if all_flag_packet:
+				continue
+			if field[1] is AllFields:
+				all_flag_packet = True
+				packet_fields = AllFields
+		elif field[0] == "global":
+			if all_flag_global:
+				continue
+			if field[1] is AllFields:
+				all_flag_global = True
+				global_states = AllFields
+		elif field[0] == "private":
+			if all_flag_private:
+				continue
+			if field[1] is AllFields:
+				all_flag_private = True
+				private_states = AllFields
+
+	packet.set_unknown(packet_fields)
+	states.set_global_unknown(global_states)
+	states.set_packet_unknown(private_states)
+
+
+def write_field(field, value, packet, states):
+	if field[0] == "packet":
+		packet.write_field(field[1], value)
+	elif field[0] == "global":
+		states.write_global_state(field[1], value)
+	elif field[0] == "private":
+		states.write_packet_state(field[1], value)
+
+
+def read_field(field, packet, states, ret_unknown = False):
+	pass
+
+
+class Expression:
+	op_map = {"eq": eq, "==": eq, "<": lt, "<=": le, "!=": ne, ">=": ge, ">": gt, "+": add, "-": sub, "*": mul, "//": floordiv, "/": truediv, "%": mod, "**": pow, "and": and_, "or": or_, "not": not_}
+	# 常数: args 为对应值; 字段: args 为字段名，形如("packet", "ip_ttl"); 参数: args 为参数列表
+	def __init__(self, type = "const", args = Unknown):
+		self._type = type
+		self._args = args
+		if type != "const" and type != "field":
+			self._op = Expression.op_map[type]
+
+	def get_type(self):
+		return self._type
+
+	def get_args(self):
+		return deepcopy(self._args)
+
+	def get_value(self, packet = None, states = None):
+		if self._type == "const":
+			return self._args
+		if self._type == "field":
+			field_type = self._args[0]
+			if field_type == "packet":
+				if packet is None:
+					return Unknown
+				return packet.read_field(self._args[1], True)
+			elif field_type == "global":
+				if states is None:
+					return Unknown
+				return states.read_global_state(self._args[1], True)
+			elif field_type == "private":
+				if states is None:
+					return Unknown
+				return states.read_packet_state(self._args[1], True)
+			else:
+				return Unknown
+
+		arg1, arg2 = self._args[0].get_value(packet, states), self._args[1].get_value(packet, states)
+		if arg1 is not Unknown and arg2 is not Unknown:
+			# 不存在 Unknown 的参数，直接求值
+			return self._op(arg1, arg2)
+
+		if self._type == "mul" and (arg1 == 0 or arg2 == 0):
+			return 0
+		if self._type == "mod" and (arg2 == 1):
+			return 0
+		if self._type == "**" and (arg2 == 0):
+			return 1
+		# Unknown 本质上是 [], 其布尔值为 False
+		if self._type == "or" and (arg1 or arg2):
+			return self._op(arg1, arg2)
+		return Unknown
+
+	def eliminate_with_packet_and_states(self, packet, states):
+		value = self.get_value(packet, states)
+		if value is not Unknown:
+			# 若当前可以直接求值，将其换成这个常数值
+			self._type = "const"
+			self._args = value
+			return
+		if self._type == "const" or self._type == "field":
+			return
+		self._args[0].eliminate_with_packet_and_states(packet, states)
+		self._args[1].eliminate_with_packet_and_states(packet, states)
+
+	# TODO: 完成这个函数
+	def get_read_fields(self):
+		return set()
+		pass
 
 	def __str__(self):
-		if self.type == 'normal':
-			return str(self.cond)
-		elif self.type == 'and':
-			return '(' + ' && '.join([str(x) for x in self.oprands]) + ')'
-		else:
-			return '(' + ' || '.join([str(x) for x in self.oprands]) + ')'
+		if self._type == "const":
+			return str(self._args)
+		if self._type == "field":
+			return str(self._args[0]) + "_" + str(self._args[1])
+		return str(self._args[0]) + " " + self._type + " " + str(self._args[1])
 
-	def __repr__(self):
-		return self.__str__()
 
-# class Graph:
-# 	def __init__(self):
-# 		# idx -> node, node -> idx
-# 		self.nodes = {}
-# 		self.node_idx = {}
-# 		# idx -> edge, edge -> idx
-# 		self.edges = {}
-# 		self.edge_idx = {}
+# TODO: 将 Condition 概念做好。Expression 不能 apply_to_packet_and_states 吗？如何处理合取范式？
+# TODO: eq 判断时，"1" 和 1 是否相等，是否需要做统一规定？
+class Condition(Expression):
+	def apply_to_packet_and_states(self, packet, states):
+		if self._type == "==":
+			arg1, arg2 = self._args[0], self._args[1]
+			if arg1.get_type() == "field" and arg2.get_type() == "const":
+				return write_field(arg1.get_args(), arg2.get_value(packet, states), packet, states)
+			if arg1.get_type() == "const" and arg2.get_type() == "field":
+				return write_field(arg2.get_args(), arg1.get_value(packet, states), packet, states)
+		if self._type == "and":
+			arg1, arg2 = self._args[0], self._args[1]
+			arg1.apply_to_packet_and_states(packet, states)
+			arg2.apply_to_packet_and_states(packet, states)
+			return
+		states.add_condition(self)
+		states.eliminate_cur_conditions_with_packet(packet)
 
-# 	# return idx, add same node twice will do nothing
-# 	def add_node(self, node):
-# 		if node not in self.node_idx:
-# 			idx = len(self.nodes)
-# 			self.nodes[idx] = node
-# 			self.node_idx[node] = idx
-# 		return self.node_idx[node]
 
-# 	# return idx, add same edge twice will do nothing
-# 	def add_edge(self, edge):
-# 		if edge not in self.edge_idx:
-# 			idx = len(self.edges)
-# 			self.edges[idx] = edge
-# 			self.edge_idx[edge] = idx
-# 		return self.edge_idx[edge]
+class ValueSource(Expression):
+	pass
+
+
+class Painter:
+	def __init__(self, node, pic_name = "test"):
+		self.__node = node
+		from graphviz import Digraph
+		self.__g = Digraph(pic_name)
+		self.__node_cnt = 0
+		self.__node_map = {}
+
+	def get_node_idx(self, node):
+		if node not in self.__node_map:
+			self.__node_map[node] = self.__node_cnt
+			self.__g.node(str(self.__node_cnt), str(node), color = 'black')
+			self.__node_cnt += 1
+		return self.__node_map[node]
+
+	def DFS(self, node):
+		node_idx = self.get_node_idx(node)
+		children = node.get_children()
+		conditions = node.get_conditions() if hasattr(node, "get_conditions") else None
+		for i in range(len(children)):
+			child = children[i]
+			if child not in self.__node_map:
+				nxt_idx = self.get_node_idx(child)
+				label = ""
+				if conditions:
+					if i < len(conditions):
+						label = str(conditions[i])
+					else:
+						label = "else"
+				self.__g.edge(str(node_idx), str(nxt_idx), color = 'black', label=label)
+				self.DFS(child)
+			else:
+				nxt_idx = self.get_node_idx(child)
+				label = ""
+				if conditions:
+					if i < len(conditions):
+						label = str(conditions[i])
+					else:
+						label = "else"
+				self.__g.edge(str(node_idx), str(nxt_idx), color = 'black', label=label)
+
+
+	def show(self):
+		self.DFS(self.__node)
+		try:
+			self.__g.view()
+		except Exception as e:
+			pass
