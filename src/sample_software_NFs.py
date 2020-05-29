@@ -43,7 +43,7 @@ class SampleLoadBalance(NFNode):
 class SampleRouter(NFNode):
 	def __init__(self):
 		super().__init__()
-		self._attributes = {"hardware": False, "will_read": {("packet", AllFields)}, "will_write": {("packet", "ethenet_header")}}
+		self._attributes = {"hardware": False, "will_read": {("packet", "ip_dst")}, "will_write": {("packet", "ethenet_header")}}
 
 	def get_cost(self, is_hardware):
 		return 55
@@ -51,3 +51,6 @@ class SampleRouter(NFNode):
 	def solve_packet(self, packet, states):
 		packet.write_field("ethenet_header", "test")
 		return 0
+
+	def __str__(self):
+		return "SampleRouter"

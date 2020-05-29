@@ -200,11 +200,11 @@ def get_whole_cost(node, is_hardware = True, weight = 0):
 		is_hardware = False
 	children = node.get_children()
 	for child  in children:
-		cost += get_whole_cost(child, is_hardware)
+		cost += get_whole_cost(child, is_hardware, weight)
 	if children:
 		cost /= len(children)
 
-	cur_cost = node.get_cost()
+	cur_cost = node.get_cost(is_hardware)
 	if is_hardware:
 		cur_cost *= weight
 	return cost + cur_cost

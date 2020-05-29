@@ -43,11 +43,42 @@ def get_ppt_sample_network():
 def get_NAPT_sample():
 	st = Start()
 	ed = SendOut()
-	napt = NAPT([("1.1.1.1", 1080, "192.168.0.1", 20), ("1.1.1.1", 1081, "192.168.0.2", 20), ("1.1.1.1", 1082, "192.168.0.3", 20), ("1.1.1.1", 1083, "192.168.0.4", 20)])
+	napt = NAPT([("192.168.0.1", 1, "192.168.0.1", 2), ("192.168.0.1", 2, "192.168.0.1", 3), ("192.168.0.1", 3, "192.168.0.1", 1), ("1.1.1.1", 1083, "192.168.0.4", 20)])
 	st.set_children([napt.entrance])
 	napt.exit.set_children([ed])
 	return st
 
+def get_router_NAPT_chain(x):
+	st, ed = Start(), SendOut()
+	tail = st
+	for i in range(x):
+		router = SampleRouter()
+		napt = NAPT([("192.168.0.1", 1, "192.168.0.1", 2), ("192.168.0.1", 2, "192.168.0.1", 3), ("192.168.0.1", 3, "192.168.0.1", 1), ("1.1.1.1", 1083, "192.168.0.4", 20)])
+		tail.set_children([router])
+		router.set_children([napt.entrance])
+		tail = napt.exit
+	tail.set_children([ed])
+	return st
+
+def get_classic_NAPT_router_ACL():
+	st, ed = Start(), SendOut()
+	tail = st
+	router = SampleRouter()
+	napt =  NAPT([("192.168.0.1", 1, "192.168.0.1", 2), ("192.168.0.1", 2, "192.168.0.1", 3), ("192.168.0.1", 3, "192.168.0.1", 1), ("1.1.1.1", 1083, "192.168.0.4", 20)])
+	acl = ACL([("1", 1), ("2", 2), ("3", 3), ("4", 4)])
+
+	st.set_children([router])
+	router.set_children([napt.entrance])
+	napt.exit.set_children([acl.entrance])
+	acl.exit.set_children([ed])
+	# napt.exit.set_children([ed])
+	return st
+
+
 ppt_sample_network = get_ppt_sample_network()
 
 sample_NATP_network = get_NAPT_sample()
+
+sample_router_NAPT_chain = get_router_NAPT_chain(5)
+
+sample_classic_NAPT_router_ACL = get_classic_NAPT_router_ACL()

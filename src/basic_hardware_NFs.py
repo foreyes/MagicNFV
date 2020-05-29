@@ -134,7 +134,7 @@ class WriteNF(NFNode):
 		return 0
 
 	def get_cost(self, is_hardware):
-		return 1.5 + value_source.get_cost(is_hardware)
+		return 1.5 + self._value_source.get_cost(is_hardware)
 
 	def __str__(self):
 		return "Write\n" + str(self._field[0]) + "_" + str(self._field[1]) + " = " + str(self._value_source)
@@ -170,11 +170,11 @@ class NAPT:
 		conditions, children = [], []
 		for info in mapping_info:
 			cond1 = Condition("==", (Condition("field", ("packet", "ip_dst")), Condition("const", info[0])))
-			cond2 = Condition("==", (Condition("field", ("packet", "tcp_port")), Condition("const", info[1])))
+			cond2 = Condition("==", (Condition("field", ("packet", "tcp_dst_port")), Condition("const", info[1])))
 			cond = Condition("and", (cond1, cond2))
 			conditions.append(cond)
 			child1 = WriteNF(("packet", "ip_dst"), Condition("const", info[2]))
-			child2 = WriteNF(("packet", "tcp_port"), Condition("const", info[3]))
+			child2 = WriteNF(("packet", "tcp_dst_port"), Condition("const", info[3]))
 			child1.set_children([child2])
 			child2.set_children([self.exit])
 			children.append(child1)
@@ -182,6 +182,30 @@ class NAPT:
 
 		classifier = BasicClassifier(conditions, children)
 		self.entrance.set_children([classifier])
+
+class ACL:
+	def __init__(self, rules):
+		self.entrance = Hub()
+		self.exit = Hub()
+
+		tail = self.entrance
+
+		# allow ip_src + port
+		for rule in rules:
+			cond1 = Condition("==", (Condition("field", ("packet", "ip_src")), Condition("const", rule[0])))
+			cond2 = Condition("==", (Condition("field", ("packet", "tcp_src_port")), Condition("const", rule[1])))
+			cond = Condition("and", (cond1, cond2))
+			classifier = BasicClassifier([cond])
+			if tail is self.entrance:
+				tail.set_children([classifier])
+			else:
+				tail.set_children([self.exit, classifier])
+			tail = classifier
+
+		tail.set_children([self.exit, Discard()])
+
+
+
 
 
 
