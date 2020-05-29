@@ -3,7 +3,7 @@
 # TODO: 实现 Field, State, Packet
 # TODO: 区分 字段，包状态，全局状态
 
-from framework import NFNode, write_field
+from framework import NFNode, write_field, Condition
 from copy import deepcopy
 
 class Start(NFNode):
@@ -13,6 +13,9 @@ class Start(NFNode):
 		self._attributes = {"hardware": True, "will_not_read": set(), "will_not_write": set()}
 
 	def solve_packet(self, packet, states):
+		return 0
+
+	def get_cost(self, is_hardware):
 		return 0
 
 	def __str__(self):
@@ -26,6 +29,9 @@ class Discard(NFNode):
 
 	def solve_packet(self, packet, states):
 		return -1
+
+	def get_cost(self, is_hardware):
+		return 0
 
 	def __str__(self):
 		return "Discard"
@@ -41,6 +47,11 @@ class DecIpTTL(NFNode):
 		ip_ttl = packet.read_field("ip_ttl")
 		packet.write_field("ip_ttl", ip_ttl - self._dec_times)
 		return 0
+
+	def get_cost(self, is_hardware):
+		if is_hardware:
+			return 1.5
+		return 4
 
 	def __str__(self):
 		return "DecIpTTL_" + str(self._dec_times)
@@ -69,8 +80,28 @@ class BasicClassifier(NFNode):
 				return i
 		return len(self._conditions)
 
+	def get_cost(self, is_hardware):
+		cost = 0
+		for cond in self._conditions:
+			cond_cost = cond.get_cost(is_hardware)
+			if is_hardware:
+				cost = max(cost, cond_cost)
+			else:
+				# 平均
+				cost += cond_cost / 2
+		return cost
+
 	def __str__(self):
 		return "BasicClassifier"
+
+# 汇集点，实际是一个空的分类器，会被优化掉
+class Hub(BasicClassifier):
+	def __init__(self):
+		super().__init__([], [])
+		self._attributes = {"hardware": True, "will_read": set(), "will_write": set()}
+
+	def __str__(self):
+		return "Blank"
 
 
 # "发送" 操作在模拟情形下处理为 "丢弃"，但是不能被任何操作交换位置(需读写所有字段)
@@ -81,6 +112,9 @@ class SendOut(NFNode):
 
 	def solve_packet(self, packet, states):
 		return -1
+
+	def get_cost(self, is_hardware):
+		return 0
 
 	def __str__(self):
 		return "SendOut"
@@ -99,5 +133,59 @@ class WriteNF(NFNode):
 		write_field(self._field, value, packet, states)
 		return 0
 
+	def get_cost(self, is_hardware):
+		return 1.5 + value_source.get_cost(is_hardware)
+
 	def __str__(self):
 		return "Write\n" + str(self._field[0]) + "_" + str(self._field[1]) + " = " + str(self._value_source)
+
+
+class EnterHardware(NFNode):
+	def __init__(self):
+		super().__init__()
+		self._attributes = {"hardware": True, "will_read": set(), "will_write": set()}
+
+	def solve_packet(self, packet, states):
+		return 0
+
+	def get_cost(self, is_hardware):
+		return 0
+
+	def __str__(self):
+		return "EnterHardware"
+
+
+# 多个基础操作组合起来的 NAPT
+class NAPT:
+	def __init__(self, mapping_info):
+		self.entrance = WriteNF(("packet", "ethenet_header"), Condition("const", None))
+		self.exit = WriteNF(("packet", "ethenet_header"), Condition("const", "test"))
+
+		# # 丢弃 ip_addr
+		# ip_dst = Condition("field", ("packet", "ip_dst"))
+		# f = BasicClassifier([Condtion("==", (ip_dst, Condtion("const", self.ip_addr)))])
+		# f.set_children(, Discard())
+
+		# info: (ip_dst, port, ip_dst, port)
+		conditions, children = [], []
+		for info in mapping_info:
+			cond1 = Condition("==", (Condition("field", ("packet", "ip_dst")), Condition("const", info[0])))
+			cond2 = Condition("==", (Condition("field", ("packet", "tcp_port")), Condition("const", info[1])))
+			cond = Condition("and", (cond1, cond2))
+			conditions.append(cond)
+			child1 = WriteNF(("packet", "ip_dst"), Condition("const", info[2]))
+			child2 = WriteNF(("packet", "tcp_port"), Condition("const", info[3]))
+			child1.set_children([child2])
+			child2.set_children([self.exit])
+			children.append(child1)
+		children.append(Discard())
+
+		classifier = BasicClassifier(conditions, children)
+		self.entrance.set_children([classifier])
+
+
+
+
+
+
+

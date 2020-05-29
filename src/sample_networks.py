@@ -40,4 +40,14 @@ def get_ppt_sample_network():
 
 	return st
 
+def get_NAPT_sample():
+	st = Start()
+	ed = SendOut()
+	napt = NAPT([("1.1.1.1", 1080, "192.168.0.1", 20), ("1.1.1.1", 1081, "192.168.0.2", 20), ("1.1.1.1", 1082, "192.168.0.3", 20), ("1.1.1.1", 1083, "192.168.0.4", 20)])
+	st.set_children([napt.entrance])
+	napt.exit.set_children([ed])
+	return st
+
 ppt_sample_network = get_ppt_sample_network()
+
+sample_NATP_network = get_NAPT_sample()

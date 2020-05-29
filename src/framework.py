@@ -191,6 +191,25 @@ def read_field(field, packet, states, ret_unknown = False):
 	pass
 
 
+def get_whole_cost(node, is_hardware = True, weight = 0):
+	cost = 0
+	if str(node) == "EnterHardware":
+		is_hardware = True
+	attrs = node.get_attributes()
+	if attrs["hardware"] == False:
+		is_hardware = False
+	children = node.get_children()
+	for child  in children:
+		cost += get_whole_cost(child, is_hardware)
+	if children:
+		cost /= len(children)
+
+	cur_cost = node.get_cost()
+	if is_hardware:
+		cur_cost *= weight
+	return cost + cur_cost
+
+
 class Expression:
 	op_map = {"eq": eq, "==": eq, "<": lt, "<=": le, "!=": ne, ">=": ge, ">": gt, "+": add, "-": sub, "*": mul, "//": floordiv, "/": truediv, "%": mod, "**": pow, "and": and_, "or": or_, "not": not_}
 	# 常数: args 为对应值; 字段: args 为字段名，形如("packet", "ip_ttl"); 参数: args 为参数列表
@@ -259,6 +278,15 @@ class Expression:
 		return set()
 		pass
 
+	def get_cost(self, is_hardware):
+		if self._type == "const":
+			return 1
+		if self._type == "field":
+			return 1.5
+		if is_hardware:
+			return max(self._args[0].get_cost(is_hardware), self._args[1].get_cost(is_hardware))
+		return self._args[0].get_cost(is_hardware) + self._args[1].get_cost(is_hardware) + 1
+
 	def __str__(self):
 		if self._type == "const":
 			return str(self._args)
@@ -289,6 +317,17 @@ class Condition(Expression):
 class ValueSource(Expression):
 	pass
 
+
+class CostCalculator:
+	def __init__(self):
+		# 长度最大为 5，缓存
+		self.rw_history = []
+		self.total_cost = 0
+
+	def read_field(self, field_name):
+		# if field_name in self.rw_history:
+		pass
+			
 
 class Painter:
 	def __init__(self, node, pic_name = "test"):
